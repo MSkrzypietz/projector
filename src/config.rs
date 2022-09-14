@@ -1,6 +1,9 @@
+use std::{env, path::PathBuf};
+
 #[derive(Debug)]
 pub struct Config {
     pub operation: Operation,
+    pub pwd: PathBuf,
 }
 
 impl Config {
@@ -37,7 +40,16 @@ impl Config {
             _ => return Err("Unknown operation"),
         };
 
-        Ok(Config { operation })
+        let pwd = get_pwd()?;
+
+        Ok(Config { operation, pwd })
+    }
+}
+
+fn get_pwd() -> Result<PathBuf, &'static str> {
+    match env::current_dir() {
+        Ok(pwd) => Ok(pwd),
+        Err(_) => Err("Unable to get current directory"),
     }
 }
 
