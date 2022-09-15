@@ -2,51 +2,41 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     env,
-    fs::{self, File, OpenOptions},
+    fs::{self, OpenOptions},
     io::Write,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
-use crate::config::{Config, Operation};
+#[derive(Debug, Serialize, Deserialize)]
+struct Data {
+    projector: HashMap<PathBuf, HashMap<String, String>>,
+}
 
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 pub struct Projector {
-    #[serde(skip_serializing)]
-    config: Config,
-    data: HashMap<PathBuf, HashMap<String, String>>,
+    pwd: PathBuf,
+    storage: PathBuf,
+    data: Data,
 }
 
 impl Projector {
-    pub fn from_config(config: Config) -> Projector {
-        Projector {
-            config,
-            data: HashMap::new(),
-        }
+    pub fn from_config(pwd: PathBuf) -> Projector {
+        let storage = get_storage_path();
+        let data = if Path::new(&storage).exists() {
+            let raw_data = fs::read_to_string(&storage).unwrap();
+            serde_json::from_str(&raw_data).unwrap()
+        } else {
+            Data {
+                projector: HashMap::new(),
+            }
+        };
+
+        Projector { pwd, storage, data }
     }
 
-    pub fn execute(&mut self) -> Result<(), &'static str> {
-        match &self.config.operation {
-            Operation::List => {
-                self.add(String::from("hello"), String::from("world"));
-                self.add(String::from("hello"), String::from("bar"));
-
-                let res = self.list();
-                println!("{:?}", res);
-                ()
-            }
-            Operation::Add(key, value) => {
-                self.add(key.clone(), value.clone());
-                self.save();
-            }
-            Operation::Remove(key) => self.remove(key.clone()),
-        }
-
-        Ok(())
-    }
-
-    fn list(&self) -> HashMap<&String, &String> {
+    pub fn get_all_values(&self) -> HashMap<&String, &String> {
         let mut dirs = Vec::new();
-        let mut curr = Some(self.config.pwd.as_path());
+        let mut curr = Some(self.pwd.as_path());
         while let Some(p) = curr {
             dirs.push(p);
             curr = p.parent();
@@ -54,35 +44,37 @@ impl Projector {
 
         let mut out = HashMap::new();
         for dir in dirs.into_iter().rev() {
-            if let Some(map) = self.data.get(dir) {
+            if let Some(map) = self.data.projector.get(dir) {
                 out.extend(map);
             }
         }
         out
     }
 
-    fn add(&mut self, key: String, value: String) {
+    pub fn add(&mut self, key: String, value: String) {
         self.data
-            .entry(self.config.pwd.clone())
+            .projector
+            .entry(self.pwd.clone())
             .or_default()
             .insert(key, value);
     }
 
-    fn remove(&mut self, key: String) {
+    pub fn remove(&mut self, key: String) {
         self.data
-            .entry(self.config.pwd.clone())
+            .projector
+            .entry(self.pwd.clone())
             .or_default()
             .remove(&key);
     }
 
-    fn save(&self) {
+    pub fn save(&self) {
         let serialized = serde_json::to_string(&self.data).unwrap();
 
         let mut file = OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
-            .open(get_data_path())
+            .open(&self.storage)
             .unwrap();
 
         file.write_all(serialized.as_bytes()).unwrap();
@@ -90,7 +82,7 @@ impl Projector {
     }
 }
 
-fn get_data_path() -> PathBuf {
+fn get_storage_path() -> PathBuf {
     let dir = env::var("HOME").unwrap();
     let mut dir = PathBuf::from(dir);
 
