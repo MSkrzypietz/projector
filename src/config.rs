@@ -1,9 +1,17 @@
 use std::{env, path::PathBuf};
 
 #[derive(Debug)]
+pub enum Operation {
+    List(Option<String>),
+    Add(String, String),
+    Remove(String),
+}
+
+#[derive(Debug)]
 pub struct Config {
     pub operation: Operation,
     pub pwd: PathBuf,
+    pub storage: PathBuf,
 }
 
 impl Config {
@@ -16,7 +24,10 @@ impl Config {
         };
 
         let operation = match operation.as_ref() {
-            "list" => Operation::List,
+            "list" => match args.next() {
+                Some(key) => Operation::List(Some(key)),
+                None => Operation::List(None),
+            },
             "add" => {
                 let key = match args.next() {
                     Some(key) => key,
@@ -40,22 +51,29 @@ impl Config {
             _ => return Err("Unknown operation"),
         };
 
-        let pwd = get_pwd()?;
-
-        Ok(Config { operation, pwd })
+        Ok(Config {
+            operation,
+            pwd: Self::get_pwd()?,
+            storage: Self::get_storage_path()?,
+        })
     }
-}
 
-fn get_pwd() -> Result<PathBuf, &'static str> {
-    match env::current_dir() {
-        Ok(pwd) => Ok(pwd),
-        Err(_) => Err("Unable to get current directory"),
+    fn get_pwd() -> Result<PathBuf, &'static str> {
+        match env::current_dir() {
+            Ok(pwd) => Ok(pwd),
+            Err(_) => Err("Unable to get current directory"),
+        }
     }
-}
 
-#[derive(Debug)]
-pub enum Operation {
-    List,
-    Add(String, String),
-    Remove(String),
+    fn get_storage_path() -> Result<PathBuf, &'static str> {
+        match env::var("HOME") {
+            Ok(dir) => {
+                let mut dir = PathBuf::from(dir);
+                dir.push(".config");
+                dir.push("projector.json");
+                Ok(dir)
+            }
+            Err(_) => Err("Unable to get home directory"),
+        }
+    }
 }

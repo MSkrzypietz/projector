@@ -11,22 +11,25 @@ fn main() {
         process::exit(1);
     });
 
-    let mut projector = Projector::from_config(config.pwd);
+    let mut projector = Projector::from_config(config.pwd, config.storage);
     match config.operation {
-        Operation::List => {
+        Operation::List(Some(key)) => {
+            let res = projector.get_value(&key);
+            println!("{:?}", res);
+        }
+        Operation::List(None) => {
             let res = projector.get_all_values();
             println!("{:?}", res);
-            ()
         }
         Operation::Add(key, value) => {
             projector.add(key.clone(), value.clone());
             projector.save();
+            println!("Added {} with {}", key, value);
         }
         Operation::Remove(key) => {
-            projector.remove(key);
+            projector.remove(&key);
             projector.save();
+            println!("Removed {}", key); 
         }
     }
-
-    println!("Success");
 }
