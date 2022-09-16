@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
-    fs::{self, OpenOptions},
+    fs::{self, File},
     io::Write,
     path::PathBuf,
 };
@@ -77,13 +77,7 @@ impl Projector {
     pub fn save(&self) {
         let serialized = serde_json::to_string(&self.data).unwrap();
 
-        let mut file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .open(&self.storage)
-            .unwrap();
-
+        let mut file = File::create(&self.storage).unwrap();
         file.write_all(serialized.as_bytes()).unwrap();
         file.flush().unwrap();
     }
@@ -181,5 +175,6 @@ mod tests {
         projector.remove("hello");
 
         assert_ne!(projector.get_value("hello"), Some(&String::from("world")));
+        assert_eq!(projector.get_value("a"), Some(&String::from("z")));
     }
 }

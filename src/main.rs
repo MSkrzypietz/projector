@@ -14,8 +14,10 @@ fn main() {
     let mut projector = Projector::from_config(config.pwd, config.storage);
     match config.operation {
         Operation::List(Some(key)) => {
-            let res = projector.get_value(&key);
-            println!("{:?}", res);
+            match projector.get_value(&key) {
+                Some(val) => println!("{key}: {val}"),
+                None => println!("Not found")
+            }
         }
         Operation::List(None) => {
             let res = projector.get_all_values();
