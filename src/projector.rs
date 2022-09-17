@@ -1,3 +1,4 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -74,12 +75,14 @@ impl Projector {
             .map(|entry| entry.remove(key));
     }
 
-    pub fn save(&self) {
-        let serialized = serde_json::to_string(&self.data).unwrap();
+    pub fn save(&self) -> Result<()> {
+        let serialized = serde_json::to_string(&self.data)?;
 
-        let mut file = File::create(&self.storage).unwrap();
-        file.write_all(serialized.as_bytes()).unwrap();
-        file.flush().unwrap();
+        let mut file = File::create(&self.storage)?;
+        file.write_all(serialized.as_bytes())?;
+        file.flush()?;
+
+        Ok(())
     }
 }
 

@@ -13,25 +13,27 @@ fn main() {
 
     let mut projector = Projector::from_config(config.pwd, config.storage);
     match config.operation {
-        Operation::List(Some(key)) => {
-            match projector.get_value(&key) {
-                Some(val) => println!("{key}: {val}"),
-                None => println!("Not found")
-            }
-        }
+        Operation::List(Some(key)) => match projector.get_value(&key) {
+            Some(val) => println!("Found entry: {key} => {val}"),
+            None => println!("Not found"),
+        },
         Operation::List(None) => {
-            let res = projector.get_all_values();
-            println!("{:?}", res);
+            let all_values = projector.get_all_values();
+            println!("{:?}", all_values);
         }
         Operation::Add(key, value) => {
             projector.add(key.clone(), value.clone());
-            projector.save();
-            println!("Added {} with {}", key, value);
+            match projector.save() {
+                Ok(_) => println!("Added: {key} => {value}"),
+                Err(e) => eprintln!("Error adding {key} => {value}: {e}"),
+            }
         }
         Operation::Remove(key) => {
             projector.remove(&key);
-            projector.save();
-            println!("Removed {}", key); 
+            match projector.save() {
+                Ok(_) => println!("Removed: {key}"),
+                Err(e) => eprintln!("Error removing {key}: {e}"),
+            }
         }
     }
 }

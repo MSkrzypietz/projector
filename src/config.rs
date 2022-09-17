@@ -1,5 +1,7 @@
 use std::{env, path::PathBuf};
 
+use anyhow::{anyhow, Result};
+
 #[derive(Debug)]
 pub enum Operation {
     List(Option<String>),
@@ -15,12 +17,12 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn build(mut args: impl Iterator<Item = String>) -> Result<Config, &'static str> {
+    pub fn build(mut args: impl Iterator<Item = String>) -> Result<Config> {
         args.next();
 
         let operation = match args.next() {
             Some(op) => op,
-            None => return Err("No operation specified"),
+            None => return Err(anyhow!("No operation specified")),
         };
 
         let operation = match operation.as_ref() {
@@ -31,11 +33,11 @@ impl Config {
             "add" => {
                 let key = match args.next() {
                     Some(key) => key,
-                    None => return Err("No key specified"),
+                    None => return Err(anyhow!("No key specified")),
                 };
                 let value = match args.next() {
                     Some(value) => value,
-                    None => return Err("No value specified"),
+                    None => return Err(anyhow!("No value specified")),
                 };
 
                 Operation::Add(key, value)
@@ -43,12 +45,12 @@ impl Config {
             "rm" => {
                 let key = match args.next() {
                     Some(key) => key,
-                    None => return Err("No key specified"),
+                    None => return Err(anyhow!("No key specified")),
                 };
 
                 Operation::Remove(key)
             }
-            _ => return Err("Unknown operation"),
+            _ => return Err(anyhow!("Unknown operation")),
         };
 
         Ok(Config {
@@ -58,14 +60,14 @@ impl Config {
         })
     }
 
-    fn get_pwd() -> Result<PathBuf, &'static str> {
+    fn get_pwd() -> Result<PathBuf> {
         match env::current_dir() {
             Ok(pwd) => Ok(pwd),
-            Err(_) => Err("Unable to get current directory"),
+            Err(_) => Err(anyhow!("Unable to get current directory")),
         }
     }
 
-    fn get_storage_path() -> Result<PathBuf, &'static str> {
+    fn get_storage_path() -> Result<PathBuf> {
         match env::var("HOME") {
             Ok(dir) => {
                 let mut dir = PathBuf::from(dir);
@@ -73,7 +75,7 @@ impl Config {
                 dir.push("projector.json");
                 Ok(dir)
             }
-            Err(_) => Err("Unable to get home directory"),
+            Err(_) => Err(anyhow!("Unable to get home directory")),
         }
     }
 }
